@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduApp - Navegação Estruturada</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        
+        /* Estilo dos Botões de Estágio */
+        .stage-btn { 
+            width: 100%; text-align: left; padding: 18px; background: #1e293b; 
+            border: 1px solid #334155; border-radius: 12px; font-weight: 600;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: 0.3s;
+        }
+        .stage-btn.active { border-color: #38bdf8; background: #1e293b; color: #38bdf8; }
+        
+        /* Container de Tópicos (Numerados) */
+        .topics-wrapper { 
+            max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out; 
+            background: #111827; border-radius: 0 0 12px 12px; margin-top: -5px;
+        }
+        .topics-wrapper.open { max-height: 500px; padding: 20px; border: 1px solid #334155; border-top: none; margin-bottom: 15px; }
+
+        .topic-card { 
+            width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
+            background: #334155; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.2s;
+        }
+        .topic-card:hover { background: #475569; }
+        .topic-card.active { background: #0284c7; color: white; transform: scale(1.1); box-shadow: 0 0 15px rgba(2, 132, 199, 0.4); }
+
+        /* Estilos das Tarefas */
+        .task-card { background-color: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 16px; margin-bottom: 15px; }
+        .btn-opt { background-color: #334155; border: 1px solid #475569; }
+        .correct { background-color: #166534 !important; border-color: #22c55e !important; }
+        .wrong { background-color: #7f1d1d !important; border-color: #ef4444 !important; }
+        .selected { border-color: #38bdf8; background-color: #0c4a6e; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="p-6 flex flex-col items-center">
+
+    <main id="view-selection" class="w-full max-w-md">
+        <header class="mb-8">
+            <h1 class="text-2xl font-bold text-white">Trilha de Aprendizado</h1>
+            <p class="text-slate-400">Escolha um estágio para começar</p>
+        </header>
+
+        <div id="accordion-container" class="space-y-4">
+            </div>
+
+        <div id="selection-info" class="mt-8 p-4 bg-sky-900/20 border border-sky-500/30 rounded-xl hidden">
+            <p class="text-xs text-sky-400 uppercase font-bold">Selecionado:</p>
+            <h2 id="display-selected-name" class="text-lg font-semibold text-white">---</h2>
+            <button onclick="startLesson()" class="w-full bg-sky-600 hover:bg-sky-500 py-4 mt-4 rounded-xl font-bold transition">INICIAR TAREFAS</button>
+        </div>
+    </main>
+
+    <main id="view-tasks" class="w-full max-w-md hidden">
+        <button onclick="showHome()" class="text-sky-400 mb-6 flex items-center gap-2">← Voltar para a Trilha</button>
+        <div id="tasks-render-area"></div>
+    </main>
+
+    <script>
+        const projectData = [
+            {
+                title: 'Iniciação do Projeto',
+                topics: [
+                    { 
+                        title: 'Definição de Escopo', 
+                        tarefas: [
+                            { id: 't1', tipo: 'quiz', pergunta: "O escopo define o que será feito?", opcoes: [{texto:"Sim", correta:true}, {texto:"Não", correta:false}], explicacao: "Correto!" },
+                            { id: 't2', tipo: 'fill_the_blank', pergunta: "O documento de ________ guia a equipe.", opcoes: ["Escopo", "Café", "Férias"], resposta_correta: "Escopo" },
+                            { id: 't3', tipo: 'connect_pairs', titulo: "Conecte", pares: [{chave: "Início", valor: "Kick-off"}, {chave: "Fim", valor: "Entrega"}] }
+                        ]
+                    },
+                    { title: 'Análise de Viabilidade', tarefas: [] },
+                    { title: 'Stakeholders', tarefas: [] }
+                ]
+            },
+            {
+                title: 'Planejamento Detalhado',
+                topics: [
+                    { title: 'Cronograma', tarefas: [] },
+                    { title: 'Gestão de Riscos', tarefas: [] }
+                ]
+            }
+        ];
+
+        let activeTopic = null;
+
+        function renderAccordion() {
+            const container = document.getElementById('accordion-container');
+            container.innerHTML = projectData.map((stage, sIdx) => `
+                <div class="stage-group">
+                    <button class="stage-btn" id="btn-stg-${sIdx}" onclick="toggleStage(${sIdx})">
+                        ${stage.title}
+                        <span class="arrow">▼</span>
+                    </button>
+                    <div class="topics-wrapper" id="wrapper-${sIdx}">
+                        <div class="flex flex-wrap gap-3">
+                            ${stage.topics.map((top, tIdx) => `
+                                <div class="topic-card" id="top-${sIdx}-${tIdx}" onclick="selectTopic(${sIdx}, ${tIdx})">
+                                    ${tIdx + 1}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleStage(index) {
+            // Fecha todos os outros
+            document.querySelectorAll('.topics-wrapper').forEach((w, i) => {
+                if(i !== index) w.classList.remove('open');
+            });
+            document.querySelectorAll('.stage-btn').forEach((b, i) => {
+                if(i !== index) b.classList.remove('active');
+            });
+
+            // Abre o atual
+            const wrapper = document.getElementById(`wrapper-${index}`);
+            const btn = document.getElementById(`btn-stg-${index}`);
+            wrapper.classList.toggle('open');
+            btn.classList.toggle('active');
+
+            // Seleciona automaticamente o primeiro tópico do estágio aberto
+            if(wrapper.classList.contains('open')) selectTopic(index, 0);
+        }
+
+        function selectTopic(sIdx, tIdx) {
+            // Limpa seleções visuais anteriores
+            document.querySelectorAll('.topic-card').forEach(c => c.classList.remove('active'));
+            
+            // Marca o novo ativo
+            const card = document.getElementById(`top-${sIdx}-${tIdx}`);
+            card.classList.add('active');
+
+            activeTopic = projectData[sIdx].topics[tIdx];
+            
+            // Atualiza info no rodapé
+            document.getElementById('selection-info').classList.remove('hidden');
+            document.getElementById('display-selected-name').innerText = activeTopic.title;
+        }
+
+        function startLesson() {
+            if (!activeTopic.tarefas || activeTopic.tarefas.length === 0) {
+                alert("Este tópico ainda não possui tarefas.");
+                return;
+            }
+            document.getElementById('view-selection').classList.add('hidden');
+            document.getElementById('view-tasks').classList.remove('hidden');
+            renderTasksArea(activeTopic.tarefas);
+        }
+
+        // --- Lógica de Renderização de Tarefas (mesma anterior) ---
+        function renderTasksArea(tarefas) {
+            const area = document.getElementById('tasks-render-area');
+            area.innerHTML = tarefas.map((t, i) => {
+                if(t.tipo === 'quiz') return `
+                    <div class="task-card">
+                        <h3 class="text-lg mb-4">${t.pergunta}</h3>
+                        <div class="space-y-2">
+                            ${t.opcoes.map(o => `<button onclick="this.classList.add('${o.correta?'correct':'wrong'}')" class="w-full p-4 bg-slate-700 rounded-xl text-left btn-opt">${o.texto}</button>`).join('')}
+                        </div>
+                    </div>`;
+                if(t.tipo === 'fill_the_blank') return `
+                    <div class="task-card">
+                        <h3 class="text-lg mb-4 italic">"${t.pergunta.replace('________', `<span id="blank-${t.id}" class="text-sky-400 underline font-bold px-2">_______</span>`)}"</h3>
+                        <div class="flex flex-wrap gap-2">
+                            ${t.opcoes.map(o => `<button onclick="checkFill('${t.id}', '${o}', '${t.resposta_correta}')" class="bg-slate-700 px-4 py-2 rounded-lg border border-slate-600">${o}</button>`).join('')}
+                        </div>
+                    </div>`;
+                if(t.tipo === 'connect_pairs') return `
+                    <div class="task-card">
+                        <h3 class="text-lg mb-4">${t.titulo}</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-2">${t.pares.map((p, idx) => `<button id="l-${idx}" onclick="selectPair('left', 'l-${idx}', '${p.valor}')" class="w-full p-3 btn-opt rounded-lg text-sm">${p.chave}</button>`).join('')}</div>
+                            <div class="space-y-2">${t.pares.map((p, idx) => `<button id="r-${idx}" onclick="selectPair('right', 'r-${idx}', '${p.valor}')" class="w-full p-3 btn-opt rounded-lg text-sm">${p.valor}</button>`).join('')}</div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        window.checkFill = (id, word, correct) => {
+            const el = document.getElementById(`blank-${id}`);
+            el.innerText = word;
+            el.className = word === correct ? "text-green-400 underline font-bold px-2" : "text-red-400 underline font-bold px-2";
+        };
+
+        let pairSelections = { left: null, right: null };
+        window.selectPair = (side, id, value) => {
+            const btn = document.getElementById(id);
+            if(pairSelections[side]) document.getElementById(pairSelections[side].id).classList.remove('selected');
+            pairSelections[side] = { id, value };
+            btn.classList.add('selected');
+            if(pairSelections.left && pairSelections.right) {
+                const bL = document.getElementById(pairSelections.left.id);
+                const bR = document.getElementById(pairSelections.right.id);
+                if(pairSelections.left.value === pairSelections.right.value) {
+                    bL.className = bR.className = "w-full p-3 rounded-lg text-sm correct";
+                } else {
+                    bL.classList.add('wrong'); bR.classList.add('wrong');
+                    setTimeout(() => { bL.classList.remove('wrong','selected'); bR.classList.remove('wrong','selected'); }, 500);
+                }
+                pairSelections = { left: null, right: null };
+            }
+        };
+
+        function showHome() {
+            document.getElementById('view-tasks').classList.add('hidden');
+            document.getElementById('view-selection').classList.remove('hidden');
+        }
+
+        renderAccordion();
+    </script>
+</body>
+</html>
