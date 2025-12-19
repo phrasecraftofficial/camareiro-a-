@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduApp - Sistema de Tarefas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .mini-card { 
+            background-color: #1e293b; border: 2px solid #334155; 
+            width: 50px; height: 50px; display: flex; align-items: center; 
+            justify-content: center; border-radius: 12px; cursor: pointer; transition: 0.3s;
+        }
+        .mini-card.active { border-color: #38bdf8; background-color: #0c4a6e; color: #38bdf8; font-weight: bold; }
+        .card-area { background-color: #1e293b; padding: 20px; border-radius: 16px; margin-bottom: 20px; }
+        .card-label { color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 15px; letter-spacing: 0.1em; }
+        .mini-cards { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-start { background-color: #0284c7; width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; transition: 0.3s; margin-top: 20px; }
+        .btn-start:hover { background-color: #0369a1; }
+        .hidden { display: none; }
+        
+        /* Estilos para as Tarefas */
+        .task-card { background-color: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 16px; margin-bottom: 15px; }
+        .btn-opt { background-color: #334155; border: 1px solid #475569; transition: 0.2s; }
+        .correct { background-color: #166534 !important; border-color: #22c55e !important; }
+        .wrong { background-color: #7f1d1d !important; border-color: #ef4444 !important; }
+        .selected { border-color: #38bdf8; background-color: #0c4a6e; }
+    </style>
+</head>
+<body class="p-6 flex flex-col items-center">
+
+    <main id="view-selection" class="w-full max-w-md">
+        <div class="mb-8 text-center">
+            <h1 id="stage-title" class="text-2xl font-bold text-sky-400">Selecione um Estágio</h1>
+        </div>
+
+        <div class="card-area shadow-2xl">
+            <div class="card-label">Estágios</div>
+            <div class="mini-cards" id="stage-cards-container"></div>
+        </div>
+
+        <div class="card-area shadow-2xl">
+            <div class="card-label">Tópicos do Estágio</div>
+            <div class="mini-cards" id="topic-cards-container"></div>
+        </div>
+
+        <div class="p-4 bg-slate-800/50 rounded-xl border border-dashed border-slate-700">
+            <h2 id="topic-title" class="text-lg font-semibold text-slate-200 text-center italic">Selecione um Tópico</h2>
+        </div>
+
+        <button onclick="startLesson()" class="btn-start shadow-lg shadow-sky-900/20">INICIAR TAREFAS</button>
+    </main>
+
+    <main id="view-tasks" class="w-full max-w-md hidden">
+        <button onclick="showHome()" class="text-sky-400 mb-6 flex items-center gap-2 font-medium">← Voltar para seleção</button>
+        <div id="tasks-render-area"></div>
+    </main>
+
+    <script>
+        const projectData = [
+            {
+                title: 'Iniciação do Projeto',
+                topics: [
+                    { 
+                        title: 'Definição de Escopo', 
+                        tarefas: [
+                            { 
+                                id: 't1', tipo: 'quiz', 
+                                pergunta: "UX significa User Experience?", 
+                                opcoes: [{texto:"Sim", correta:true}, {texto:"Não", correta:false}], 
+                                explicacao: "UX é Experiência do Usuário." 
+                            },
+                            { 
+                                id: 't2', tipo: 'fill_the_blank', 
+                                pergunta: "O ________ é a base do planejamento de um projeto.", 
+                                opcoes: ["Escopo", "Código", "Design"], 
+                                resposta_correta: "Escopo" 
+                            },
+                            { 
+                                id: 't3', tipo: 'connect_pairs', 
+                                titulo: "Associe os conceitos de Escopo",
+                                pares: [
+                                    { chave: "Inclusão", valor: "O que será feito" },
+                                    { chave: "Exclusão", valor: "O que não será feito" }
+                                ]
+                            }
+                        ]
+                    },
+                    { title: 'Análise de Viabilidade', tarefas: [] }
+                ]
+            },
+            {
+                title: 'Planejamento Detalhado',
+                topics: [
+                    { title: 'Cronograma', tarefas: [] },
+                    { title: 'Gestão de Riscos', tarefas: [] }
+                ]
+            }
+        ];
+
+        let structuredData = [];
+        let activeStageId = null;
+        let activeTopicId = null;
+        let pairSelections = { left: null, right: null };
+
+        function generateDynamicIds(data) {
+            return data.map((stage, sIdx) => ({
+                id: sIdx + 1,
+                title: stage.title,
+                topics: stage.topics.map((top, tIdx) => ({
+                    id: parseFloat(`${sIdx + 1}.${tIdx + 1}`),
+                    ...top
+                }))
+            }));
+        }
+
+        // --- Renderização de Seletores ---
+        function renderStageCards() {
+            const container = document.getElementById('stage-cards-container');
+            container.innerHTML = '';
+            structuredData.forEach(stage => {
+                const card = document.createElement('div');
+                card.className = `mini-card stage-card ${activeStageId === stage.id ? 'active' : ''}`;
+                card.textContent = stage.id;
+                card.onclick = () => handleStageClick(stage);
+                container.appendChild(card);
+            });
+        }
+
+        function renderTopicCards(stage) {
+            const container = document.getElementById('topic-cards-container');
+            container.innerHTML = '';
+            stage.topics.forEach(topic => {
+                const card = document.createElement('div');
+                card.className = `mini-card topic-card ${activeTopicId === topic.id ? 'active' : ''}`;
+                card.textContent = topic.id;
+                card.onclick = () => handleTopicClick(topic);
+                container.appendChild(card);
+            });
+        }
+
+        function handleStageClick(stage) {
+            activeStageId = stage.id;
+            document.getElementById('stage-title').textContent = `Estágio ${stage.id}: ${stage.title}`;
+            renderStageCards();
+            renderTopicCards(stage);
+            if(stage.topics.length > 0) handleTopicClick(stage.topics[0]);
+        }
+
+        function handleTopicClick(topic) {
+            activeTopicId = topic.id;
+            document.getElementById('topic-title').textContent = `Tópico ${topic.id}: ${topic.title}`;
+            renderTopicCards(structuredData.find(s => s.id === activeStageId));
+        }
+
+        // --- Renderização de Tarefas ---
+        function startLesson() {
+            const stage = structuredData.find(s => s.id === activeStageId);
+            const topic = stage.topics.find(t => t.id === activeTopicId);
+
+            if (!topic.tarefas || topic.tarefas.length === 0) {
+                alert("Este tópico ainda não possui tarefas.");
+                return;
+            }
+
+            document.getElementById('view-selection').classList.add('hidden');
+            document.getElementById('view-tasks').classList.remove('hidden');
+            renderTasksArea(topic.tarefas);
+        }
+
+        function renderTasksArea(tarefas) {
+            const area = document.getElementById('tasks-render-area');
+            area.innerHTML = tarefas.map((t, i) => {
+                if(t.tipo === 'quiz') return `
+                    <div class="task-card shadow-lg">
+                        <p class="text-xs font-bold text-slate-500 uppercase mb-2">Tarefa ${i+1} • Quiz</p>
+                        <h3 class="text-lg mb-4">${t.pergunta}</h3>
+                        <div class="space-y-2">
+                            ${t.opcoes.map(o => `<button onclick="this.classList.add('${o.correta?'correct':'wrong'}')" class="w-full p-4 bg-slate-700 rounded-xl text-left btn-opt">${o.texto}</button>`).join('')}
+                        </div>
+                    </div>`;
+
+                if(t.tipo === 'fill_the_blank') return `
+                    <div class="task-card shadow-lg">
+                        <p class="text-xs font-bold text-slate-500 uppercase mb-2">Tarefa ${i+1} • Completar</p>
+                        <h3 class="text-lg mb-4 italic">"${t.pergunta.replace('________', `<span id="blank-${t.id}" class="text-sky-400 underline font-bold px-2">_______</span>`)}"</h3>
+                        <div class="flex flex-wrap gap-2">
+                            ${t.opcoes.map(o => `<button onclick="checkFill('${t.id}', '${o}', '${t.resposta_correta}')" class="bg-slate-700 px-4 py-2 rounded-lg border border-slate-600 hover:bg-slate-600">${o}</button>`).join('')}
+                        </div>
+                    </div>`;
+
+                if(t.tipo === 'connect_pairs') return `
+                    <div class="task-card shadow-lg">
+                        <p class="text-xs font-bold text-slate-500 uppercase mb-2">Tarefa ${i+1} • Conectar</p>
+                        <h3 class="text-lg mb-4">${t.titulo}</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-2">${t.pares.map((p, idx) => `<button id="l-${idx}" onclick="selectPair('left', 'l-${idx}', '${p.valor}')" class="w-full p-3 btn-opt rounded-lg text-sm min-h-[50px]">${p.chave}</button>`).join('')}</div>
+                            <div class="space-y-2">${t.pares.map((p, idx) => `<button id="r-${idx}" onclick="selectPair('right', 'r-${idx}', '${p.valor}')" class="w-full p-3 btn-opt rounded-lg text-sm min-h-[50px]">${p.valor}</button>`).sort(()=>Math.random()-0.5).join('')}</div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        // --- Lógica de Interação ---
+        window.checkFill = (id, word, correct) => {
+            const el = document.getElementById(`blank-${id}`);
+            el.innerText = word;
+            el.className = word === correct ? "text-green-400 underline font-bold px-2" : "text-red-400 underline font-bold px-2";
+        };
+
+        window.selectPair = (side, id, value) => {
+            const btn = document.getElementById(id);
+            if(pairSelections[side]) document.getElementById(pairSelections[side].id).classList.remove('selected');
+            pairSelections[side] = { id, value };
+            btn.classList.add('selected');
+
+            if(pairSelections.left && pairSelections.right) {
+                const bL = document.getElementById(pairSelections.left.id);
+                const bR = document.getElementById(pairSelections.right.id);
+                const isMatch = pairSelections.left.value === pairSelections.right.value;
+
+                if(isMatch) {
+                    bL.className = bR.className = "w-full p-3 rounded-lg text-sm min-h-[50px] correct";
+                } else {
+                    bL.classList.add('wrong'); bR.classList.add('wrong');
+                    setTimeout(() => { bL.classList.remove('wrong','selected'); bR.classList.remove('wrong','selected'); }, 500);
+                }
+                pairSelections = { left: null, right: null };
+            }
+        };
+
+        function showHome() {
+            document.getElementById('view-tasks').classList.add('hidden');
+            document.getElementById('view-selection').classList.remove('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            structuredData = generateDynamicIds(projectData);
+            if(structuredData.length > 0) handleStageClick(structuredData[0]);
+        });
+    </script>
+</body>
+</html>
