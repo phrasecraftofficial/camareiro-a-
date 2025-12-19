@@ -3,109 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduApp - Tarefas Interativas</title>
+    <title>EduApp - Navegação Dinâmica</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; overflow-x: hidden; }
         .card { background-color: #1e293b; border: 1px solid #334155; }
-        .selected { border-color: #38bdf8; background-color: #0c4a6e; }
-        .correct { background-color: #166534 !important; border-color: #22c55e !important; }
-        .wrong { background-color: #991b1b !important; border-color: #ef4444 !important; }
+        .btn-topic { background-color: #1e293b; border: 1px solid #334155; transition: 0.2s; }
+        .btn-topic:hover { border-color: #38bdf8; background-color: #0f172a; }
+        .correct { background-color: #166534 !important; border-color: #22c55e !important; pointer-events: none; }
+        .wrong { background-color: #7f1d1d !important; border-color: #ef4444 !important; }
+        .hidden-view { display: none; }
     </style>
 </head>
-<body class="p-4 md:p-8 flex flex-col items-center">
+<body class="p-4 flex flex-col items-center">
 
-    <header class="w-full max-w-md mb-8">
-        <h1 class="text-xl font-bold text-sky-400">Estágio: Design Basics</h1>
-        <div class="w-full bg-slate-700 h-2 rounded-full mt-2">
-            <div id="progress" class="bg-sky-500 h-2 rounded-full transition-all duration-500" style="width: 33%"></div>
-        </div>
-    </header>
-
-    <main class="w-full max-w-md space-y-6">
-
-        <section class="card p-6 rounded-2xl shadow-xl">
-            <span class="text-xs font-bold uppercase text-slate-400">Tarefa 1 • Quiz</span>
-            <h2 class="text-lg mt-2 mb-4">O que significa a sigla UX?</h2>
-            <div class="space-y-3">
-                <button onclick="checkQuiz(this, true)" class="w-full p-4 rounded-xl border border-slate-600 hover:bg-slate-700 transition text-left">User Experience</button>
-                <button onclick="checkQuiz(this, false)" class="w-full p-4 rounded-xl border border-slate-600 hover:bg-slate-700 transition text-left">User Example</button>
+    <div id="view-home" class="w-full max-w-md space-y-8 animate-in fade-in duration-500">
+        <header class="py-6">
+            <h1 class="text-3xl font-black text-white">Meu Curso</h1>
+            <p class="text-slate-400">Continue de onde parou</p>
+        </header>
+        <div id="stages-list" class="space-y-6">
             </div>
-            <p id="quiz-feedback" class="hidden mt-4 text-sm text-slate-300">UX é o termo para Experiência do Usuário.</p>
-        </section>
+    </div>
 
-        <section class="card p-6 rounded-2xl shadow-xl">
-            <span class="text-xs font-bold uppercase text-slate-400">Tarefa 2 • Preencher</span>
-            <h2 class="text-lg mt-2 mb-4 italic">
-                "O contraste alto facilita a <span id="blank" class="border-b-2 border-sky-500 px-4 text-sky-400">_______</span> de textos curtos."
-            </h2>
-            <div class="flex gap-2">
-                <button onclick="fill('Leitura', true)" class="bg-slate-700 px-4 py-2 rounded-lg border border-slate-500">Leitura</button>
-                <button onclick="fill('Escrita', false)" class="bg-slate-700 px-4 py-2 rounded-lg border border-slate-500">Escrita</button>
-                <button onclick="fill('Impressão', false)" class="bg-slate-700 px-4 py-2 rounded-lg border border-slate-500">Impressão</button>
+    <div id="view-tasks" class="w-full max-w-md hidden-view animate-in slide-in-from-right duration-300">
+        <header class="flex items-center gap-4 py-6">
+            <button onclick="showHome()" class="p-2 bg-slate-800 rounded-full text-sky-400">←</button>
+            <h2 id="current-topic-name" class="text-xl font-bold">Tarefa</h2>
+        </header>
+        <div id="tasks-container" class="space-y-6 pb-20">
             </div>
-        </section>
-
-        <section class="card p-6 rounded-2xl shadow-xl">
-            <span class="text-xs font-bold uppercase text-slate-400">Tarefa 3 • Conectar Pares</span>
-            <div class="grid grid-cols-2 gap-4 mt-4">
-                <div class="space-y-2">
-                    <button id="p1" onclick="selectPair('left', 'p1', 'max')" class="w-full p-3 card rounded-lg text-sm">Preto e Branco</button>
-                    <button id="p2" onclick="selectPair('left', 'p2', 'low')" class="w-full p-3 card rounded-lg text-sm">Cinza e Cinza</button>
-                </div>
-                <div class="space-y-2">
-                    <button id="p3" onclick="selectPair('right', 'p3', 'low')" class="w-full p-3 card rounded-lg text-sm">Contraste Baixo</button>
-                    <button id="p4" onclick="selectPair('right', 'p4', 'max')" class="w-full p-3 card rounded-lg text-sm">Contraste Máximo</button>
-                </div>
-            </div>
-        </section>
-
-    </main>
+    </div>
 
     <script>
-        // Lógica Quiz
-        function checkQuiz(btn, isCorrect) {
-            btn.classList.add(isCorrect ? 'correct' : 'wrong');
-            document.getElementById('quiz-feedback').classList.remove('hidden');
-        }
-
-        // Lógica Fill the Blank
-        function fill(word, isCorrect) {
-            const blank = document.getElementById('blank');
-            blank.innerText = word;
-            blank.classList.remove('text-sky-400', 'text-green-400', 'text-red-400');
-            blank.classList.add(isCorrect ? 'text-green-400' : 'text-red-400');
-        }
-
-        // Lógica Connect Pairs
-        let selection = { left: null, right: null };
-        function selectPair(side, id, value) {
-            const btn = document.getElementById(id);
-            
-            // Remove seleção anterior do mesmo lado
-            if(selection[side]) document.getElementById(selection[side].id).classList.remove('selected');
-            
-            selection[side] = { id, value };
-            btn.classList.add('selected');
-
-            if(selection.left && selection.right) {
-                const bLeft = document.getElementById(selection.left.id);
-                const bRight = document.getElementById(selection.right.id);
-
-                if(selection.left.value === selection.right.value) {
-                    bLeft.classList.replace('selected', 'correct');
-                    bRight.classList.replace('selected', 'correct');
-                } else {
-                    bLeft.classList.add('wrong');
-                    bRight.classList.add('wrong');
-                    setTimeout(() => {
-                        bLeft.classList.remove('selected', 'wrong');
-                        bRight.classList.remove('selected', 'wrong');
-                    }, 500);
-                }
-                selection = { left: null, right: null };
+        // BASE DE DADOS COMPLETA
+        const courseData =  [
+            {
+                id: "stg_1",
+                nome: "Estágio 1: Design Visual",
+                topicos: [
+                    {
+                        id: "stg_1_top_1",
+                        titulo: "Cores e Contraste",
+                        concluido: false,
+                        tarefas: [
+                            {
+                                id: "t1",
+                                tipo: "quiz",
+                                pergunta: "O que significa a sigla UX?",
+                                opcoes: [
+                                    { texto: "User Experience", correta: true },
+                                    { texto: "User Example", correta: false }
+                                ],
+                                explicacao: "UX é Experiência do Usuário."
+                            },
+                            {
+                                id: "t2",
+                                tipo: "fill_the_blank",
+                                pergunta: "O contraste alto facilita a ________ de textos.",
+                                opcoes: ["Leitura", "Escrita", "Impressão"],
+                                resposta_correta: "Leitura"
+                            },
+                            {
+                                id: "t3",
+                                tipo: "connect_pairs",
+                                titulo: "Associe os contrastes",
+                                pares: [
+                                    { chave: "Preto/Branco", valor: "Máximo" },
+                                    { chave: "Cinza/Cinza", valor: "Baixo" }
+                                ]
+                            }
+                        ]
+                    },
+                    { id: "stg_1_top_2", titulo: "Tipografia Básica", concluido: false, tarefas: [] }
+                ]
+            },
+            {
+                id: "stg_2",
+                nome: "Estágio 2: Arquitetura",
+                topicos: [
+                    { id: "stg_2_top_1", titulo: "Sitemaps", concluido: false, tarefas: [] },
+                    { id: "stg_2_top_2", titulo: "User Flow", concluido: false, tarefas: [] }
+                ]
             }
+        ];
+
+        const homeView = document.getElementById('view-home');
+        const tasksView = document.getElementById('view-tasks');
+        const stagesList = document.getElementById('stages-list');
+        const tasksContainer = document.getElementById('tasks-container');
+
+        // RENDERIZA A HOME
+        function renderHome() {
+            stagesList.innerHTML = '';
+            courseData.forEach(stage => {
+                const stageEl = document.createElement('div');
+                stageEl.innerHTML = `
+                    <h3 class="text-xs font-bold text-sky-500 uppercase tracking-widest mb-3">${stage.nome}</h3>
+                    <div class="grid gap-3">
+                        ${stage.topicos.map(topico => `
+                            <button onclick="openTopic('${stage.id}', '${topico.id}')" class="btn-topic w-full p-5 rounded-2xl flex justify-between items-center text-left">
+                                <span>${topico.nome}</span>
+                                <span class="text-slate-500 text-sm">${topico.tarefas.length > 0 ? topico.tarefas.length + ' Atividades' : 'Breve'}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+                stagesList.appendChild(stageEl);
+            });
         }
+
+        // ABRE O TÓPICO
+        function openTopic(stageId, topicId) {
+            const stage = courseData.find(s => s.id === stageId);
+            const topic = stage.topicos.find(t => t.id === topicId);
+            
+            document.getElementById('current-topic-name').innerText = topic.nome;
+            tasksContainer.innerHTML = topic.tarefas.length > 0 ? '' : '<p class="text-center text-slate-500 py-10">Nenhuma tarefa disponível ainda.</p>';
+            
+            topic.tarefas.forEach((tarefa, idx) => {
+                if(tarefa.tipo === 'quiz') {
+                    tasksContainer.innerHTML += `
+                        <div class="card p-6 rounded-3xl">
+                            <h4 class="mb-4 text-lg font-medium">${tarefa.pergunta}</h4>
+                            <div class="space-y-2">
+                                ${tarefa.opcoes.map(o => `<button onclick="this.classList.add('${o.correta ? 'correct' : 'wrong'}')" class="w-full p-4 btn-topic rounded-xl text-left">${o.texto}</button>`).join('')}
+                            </div>
+                        </div>`;
+                }
+                if(tarefa.tipo === 'fill_the_blank') {
+                    tasksContainer.innerHTML += `
+                        <div class="card p-6 rounded-3xl">
+                            <h4 class="mb-4 text-lg italic">"${tarefa.pergunta.replace('________', `<span class='text-sky-400 font-bold'>...</span>`)}"</h4>
+                            <div class="flex gap-2">
+                                ${tarefa.opcoes.map(o => `<button onclick="alert('${o === tarefa.resposta_correta ? 'Acertou!' : 'Tente de novo'}')" class="px-4 py-2 bg-slate-700 rounded-lg">${o}</button>`).join('')}
+                            </div>
+                        </div>`;
+                }
+            });
+
+            homeView.classList.add('hidden-view');
+            tasksView.classList.remove('hidden-view');
+        }
+
+        function showHome() {
+            tasksView.classList.add('hidden-view');
+            homeView.classList.remove('hidden-view');
+        }
+
+        renderHome();
     </script>
 </body>
 </html>
