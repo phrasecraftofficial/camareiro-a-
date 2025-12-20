@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trilha Estilo Reels</title>
+    
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+    
+    <style>
+        :root {
+            --bg-color: #020204;
+            --ios-purple: linear-gradient(135deg, #6e56d6, #4a36b3);
+        }
+
+        /* Ativando o "grude" (Snap) no container principal */
+        html {
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: -apple-system, system-ui, sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* Criamos "âncoras" invisíveis para o scroll grudar */
+        .snap-point {
+            height: 100vh;
+            scroll-snap-align: start;
+            pointer-events: none;
+        }
+
+        .scene {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            perspective: 1000px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #0f0f1f 0%, #020204 80%);
+            z-index: 10;
+        }
+
+        .track {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+        }
+
+        .lesson-item {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            opacity: 0;
+            will-change: transform, opacity;
+        }
+
+        .icon-box {
+            width: 65px;
+            height: 65px;
+            background: var(--ios-purple);
+            border-radius: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 20px rgba(88, 86, 214, 0.3);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .lesson-item.active .icon-box {
+            transform: scale(1.2);
+            box-shadow: 0 0 40px rgba(110, 86, 214, 0.8);
+        }
+
+        .material-symbols-rounded { font-size: 32px; color: white; }
+
+        .title {
+            margin-top: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            padding: 5px 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scene">
+        <div class="track" id="track"></div>
+    </div>
+
+    <div id="snap-container"></div>
+
+    <script>
+        const aulas = [
+            { icon: 'auto_awesome', title: '01. Introdução' },
+            { icon: 'architecture', title: '02. Estrutura' },
+            { icon: 'Ads_Click', title: '03. Interação' },
+            { icon: 'database', title: '04. Dados' },
+            { icon: 'Style', title: '05. Estilo iOS' },
+            { icon: 'animation', title: '06. Animações' },
+            { icon: 'api', title: '07. Conexões' },
+            { icon: 'Lock', title: '08. Segurança' },
+            { icon: 'Rocket', title: '09. Launch' },
+            { icon: 'Emoji_Events', title: '10. Conclusão' }
+        ];
+
+        const track = document.getElementById('track');
+        const snapContainer = document.getElementById('snap-container');
+        const items = [];
+        
+        // Z-GAP reduzido conforme solicitado
+        const zGap = -200; 
+        // Sensibilidade do scroll: quantos pixels de scroll equivalem a uma troca de aula
+        const scrollStep = 500; 
+
+        aulas.forEach((aula, i) => {
+            // 1. Criar ícones 3D
+            const div = document.createElement('div');
+            div.className = 'lesson-item';
+            let xAnchor = 0;
+            if (i % 3 === 1) xAnchor = -400;
+            if (i % 3 === 2) xAnchor = 400;
+
+            div.innerHTML = `
+                <div class="icon-box"><span class="material-symbols-rounded">${aula.icon}</span></div>
+                <span class="title">${aula.title}</span>
+            `;
+            track.appendChild(div);
+            items.push({ el: div, xAnchor: xAnchor, z: i * zGap });
+
+            // 2. Criar pontos de Snap (âncoras de scroll)
+            const snap = document.createElement('div');
+            snap.className = 'snap-point';
+            snapContainer.appendChild(snap);
+        });
+
+        window.addEventListener('scroll', () => {
+            // Normalizamos o scroll para que cada 100vh (um snap) mova exatamente um zGap
+            const scrolledIndex = window.scrollY / window.innerHeight;
+            const currentMove = scrolledIndex * Math.abs(zGap);
+
+            items.forEach((item, i) => {
+                const currentZ = item.z + currentMove;
+                
+                // Movimento Vertical e Convergência proporcionais ao novo Z
+                const currentY = (currentZ * -0.8); 
+                const factor = Math.abs(currentZ / 300); 
+                const currentX = item.xAnchor * Math.min(factor, 2);
+
+                // Opacidade otimizada para zGap 300 (mantém ~4 visíveis)
+                let opacity = 0;
+                if (currentZ > -1200 && currentZ < 600) {
+                    opacity = 1 - Math.abs(currentZ / 800);
+                }
+
+                item.el.style.transform = `
+                    translate(-50%, -50%) 
+                    translate3d(${currentX}px, ${currentY}px, ${currentZ}px)
+                `;
+                item.el.style.opacity = Math.max(opacity, 0);
+
+                // Feedback visual de "Active" (foco central)
+                if (Math.abs(currentZ) < 150) {
+                    item.el.classList.add('active');
+                } else {
+                    item.el.classList.remove('active');
+                }
+                
+                const blur = Math.max(0, Math.abs(currentZ) / 150);
+                item.el.style.filter = `blur(${blur}px)`;
+            });
+        });
+
+        window.dispatchEvent(new Event('scroll'));
+    </script>
+</body>
+</html>
